@@ -1,0 +1,324 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url = "file:./prisma/db/custom.db"
+
+}
+
+// User Types
+enum UserRole {
+  ADMIN
+  INSTRUCTOR
+  STUDENT
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+  LOCKED
+}
+
+// Base User Model
+model User {
+  id            String        @id @default(cuid())
+  username      String        @unique
+  password      String
+  email         String?       @unique
+  phoneNumber   String?
+  role          UserRole
+  status        AccountStatus @default(ACTIVE)
+
+  // Profile info
+  fullName      String?
+  avatar        String?
+
+  // Security
+  isFirstLogin  Boolean       @default(true)
+  mfaEnabled    Boolean       @default(false)
+  mfaSecret     String?
+  failedLogins  Int           @default(0)
+  lastLoginAt   DateTime?
+  lockedUntil   DateTime?
+
+  // Student specific
+  student       Student?
+
+  // Instructor specific
+  instructor    Instructor?
+
+  // Relations
+  notifications Notification[]
+  auditLogs     AuditLog[]
+  passwordResetTokens PasswordResetToken[]
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([username])
+  @@index([role])
+  @@index([status])
+}
+
+// Student Model
+model Student {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Class assignments (comma-separated since SQLite doesn't support arrays)
+  classIds     String   // Format: "classId1,classId2"
+
+  // Academic info
+  studentNumber String?  @unique
+
+  // Password history for preventing reuse
+  passwordHistory String // JSON array of previous password hashes
+
+  // Relations
+  quizResults QuizResult[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Instructor Model
+model Instructor {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Class assignments
+  classIds     String   // Format: "classId1,classId2"
+
+  // Relations
+  quizzes     Quiz[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Class/Section Model
+model Class {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  description  String?
+  section      String?  // e.g., "2A", "2B"
+
+  // Instructors assigned to this class
+  instructorIds String  // Format: "instructorId1,instructorId2"
+
+  // Quiz count for quick stats
+  quizCount    Int      @default(0)
+  studentCount Int      @default(0)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([name])
+}
+
+// Quiz Model
+enum QuizStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  SHORT_ANSWER
+  ESSAY
+  MATCHING
+  FILL_IN_BLANK
+  DRAG_DROP
+}
+
+model Quiz {
+  id              String      @id @default(cuid())
+  title           String
+  description     String?
+  instructions    String?
+
+  // Quiz configuration
+  timeLimit       Int?        // in minutes, null = no limit
+  allowedAttempts Int?        // null = unlimited
+  passingScore    Int?        // percentage
+  showResults     Boolean     @default(true) // show results immediately
+  shuffleQuestions Boolean    @default(false)
+  randomizeOptions  Boolean   @default(false)
+
+  // Scheduling
+  availableFrom   DateTime?
+  availableUntil  DateTime?
+
+  // Anti-cheating
+  fullscreenMode  Boolean     @default(false)
+  disableCopyPaste Boolean    @default(false)
+  requireProctoring Boolean   @default(false)
+
+  // Class assignments
+  classIds        String      // Format: "classId1,classId2"
+
+  // Creator
+  createdById     String
+  createdBy       Instructor  @relation(fields: [createdById], references: [id])
+
+  // Status
+  status          QuizStatus  @default(DRAFT)
+
+  // Questions stored as JSON
+  questions       String      // JSON array of Question objects
+
+  // Stats
+  totalPoints     Int         @default(0)
+
+  // Relations
+  quizResults     QuizResult[]
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([createdById])
+  @@index([status])
+}
+
+model QuizResult {
+  id              String   @id @default(cuid())
+  quizId          String
+  quiz            Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  // Results
+  score           Float
+  maxScore        Float
+  percentage      Float
+  passed          Boolean
+
+  // Answers stored as JSON
+  answers         String   // JSON object with questionId -> answer
+
+  // Timing
+  startedAt       DateTime
+  completedAt     DateTime
+  timeSpent       Int      // in seconds
+
+  // Submission info
+  attemptNumber   Int      @default(1)
+  isLate          Boolean  @default(false)
+
+  // Feedback
+  feedback        String?
+  instructorNotes String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([quizId])
+  @@index([studentId])
+  @@index([completedAt])
+}
+
+// Notification Model
+enum NotificationType {
+  QUIZ_ASSIGNED
+  QUIZ_REMINDER
+  DEADLINE_APPROACHING
+  QUIZ_RESULT
+  ACCOUNT_LOCKED
+  PASSWORD_RESET
+  SYSTEM_MESSAGE
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+
+  // Recipient
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Content
+  title     String
+  message   String
+  link      String?
+
+  // Status
+  read      Boolean          @default(false)
+  readAt    DateTime?
+
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+  @@index([read])
+  @@index([type])
+}
+
+// Audit Log Model
+enum AuditAction {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+  PASSWORD_CHANGE
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+  QUIZ_CREATED
+  QUIZ_UPDATED
+  QUIZ_DELETED
+  QUIZ_SUBMITTED
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  CLASS_CREATED
+  CLASS_UPDATED
+  CLASS_DELETED
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  action      AuditAction
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Details
+  ipAddress   String?
+  userAgent   String?
+  details     String?     // JSON with additional context
+
+  // Target resource
+  resourceType String?
+  resourceId   String?
+
+  createdAt   DateTime    @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// Password Reset Token Model
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  token     String   @unique
+  expiresAt DateTime
+
+  used      Boolean  @default(false)
+  usedAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}

@@ -1,0 +1,323 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useAuthStore } from '@/store/auth'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { VisuallyHidden } from '@/components/ui/visually-hidden'
+import { 
+  BookOpen, 
+  ArrowLeft, 
+  Search, 
+  Users, 
+  Clock,
+  BarChart3,
+  Edit,
+  Play,
+  Pause,
+  Eye,
+  Plus
+} from 'lucide-react'
+
+interface Quiz {
+  id: string
+  title: string
+  description?: string
+  status: string
+  timeLimit?: number
+  totalPoints: number
+  availableFrom?: string
+  availableUntil?: string
+  createdAt: string
+  _count: {
+    quizResults: number
+  }
+}
+
+interface ClassInfo {
+  id: string
+  name: string
+  section?: string
+  description?: string
+}
+
+interface InstructorQuizzesViewProps {
+  classInfo: ClassInfo
+  onClose: () => void
+}
+
+export default function InstructorQuizzesView({ classInfo, onClose }: InstructorQuizzesViewProps) {
+  const { token } = useAuthStore()
+  const [quizzes, setQuizzes] = useState<Quiz[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null)
+
+  useEffect(() => {
+    fetchQuizzes()
+  }, [])
+
+  const fetchQuizzes = async () => {
+    try {
+      const response = await fetch(`/api/instructor/classes/${classInfo.id}/quizzes`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setQuizzes(data.quizzes || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch quizzes:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredQuizzes = quizzes.filter(quiz =>
+    quiz.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    quiz.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'PUBLISHED': return 'default'
+      case 'DRAFT': return 'secondary'
+      case 'ARCHIVED': return 'outline'
+      default: return 'secondary'
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'PUBLISHED': return <Play className="w-3 h-3" />
+      case 'DRAFT': return <Edit className="w-3 h-3" />
+      case 'ARCHIVED': return <Pause className="w-3 h-3" />
+      default: return <Clock className="w-3 h-3" />
+    }
+  }
+
+  if (loading) {
+    return (
+      <Dialog open={true} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <div className="flex items-center justify-center min-h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading quizzes...</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <VisuallyHidden>
+        <DialogTitle>Quizzes View</DialogTitle>
+      </VisuallyHidden>
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div>
+              <DialogTitle className="flex items-center gap-2">
+                <BookOpen className="w-5 h-5" />
+                Quizzes - {classInfo.name}
+              </DialogTitle>
+              <DialogDescription>
+                {classInfo.section && `Section ${classInfo.section} • `}
+                {quizzes.length} quizzes created
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Search and Create */}
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input
+                placeholder="Search quizzes by title or description..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Button onClick={() => alert('Create quiz feature coming soon!')}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Quiz
+            </Button>
+          </div>
+
+          {/* Quizzes List */}
+          {filteredQuizzes.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <BookOpen className="w-12 h-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">
+                  {searchTerm ? 'No quizzes found' : 'No quizzes created'}
+                </h3>
+                <p className="text-muted-foreground text-center">
+                  {searchTerm ? 'Try adjusting your search terms' : 'Create your first quiz for this class'}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {filteredQuizzes.map((quiz) => (
+                <Card key={quiz.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedQuiz(quiz)}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg mb-2">{quiz.title}</CardTitle>
+                        {quiz.description && (
+                          <CardDescription className="mb-2">{quiz.description}</CardDescription>
+                        )}
+                        <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {quiz.timeLimit ? `${quiz.timeLimit} min` : 'No limit'}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <BarChart3 className="w-3 h-3" />
+                            {quiz.totalPoints} points
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            {quiz._count.quizResults} attempts
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={getStatusColor(quiz.status)} className="flex items-center gap-1">
+                          {getStatusIcon(quiz.status)}
+                          {quiz.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-slate-600 dark:text-slate-400">
+                        Created {new Date(quiz.createdAt).toLocaleDateString()}
+                        {quiz.availableFrom && (
+                          <span className="ml-4">
+                            Available: {new Date(quiz.availableFrom).toLocaleDateString()}
+                          </span>
+                        )}
+                        {quiz.availableUntil && (
+                          <span className="ml-4">
+                            Until: {new Date(quiz.availableUntil).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm">
+                          <Eye className="w-3 h-3 mr-1" />
+                          View
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <BarChart3 className="w-3 h-3 mr-1" />
+                          Results
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Quiz Details Modal */}
+        {selectedQuiz && (
+          <Dialog open={!!selectedQuiz} onOpenChange={() => setSelectedQuiz(null)}>
+            <VisuallyHidden>
+              <DialogTitle>Quiz Details</DialogTitle>
+            </VisuallyHidden>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <BookOpen className="w-5 h-5" />
+                  {selectedQuiz.title}
+                </DialogTitle>
+                <DialogDescription>
+                  <Badge variant={getStatusColor(selectedQuiz.status)} className="flex items-center gap-1 w-fit">
+                    {getStatusIcon(selectedQuiz.status)}
+                    {selectedQuiz.status}
+                  </Badge>
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                {selectedQuiz.description && (
+                  <div>
+                    <h4 className="font-semibold mb-2">Description</h4>
+                    <p className="text-slate-600 dark:text-slate-400">{selectedQuiz.description}</p>
+                  </div>
+                )}
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <h4 className="font-semibold">Quiz Details</h4>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        <span>Time Limit: {selectedQuiz.timeLimit ? `${selectedQuiz.timeLimit} minutes` : 'No limit'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <BarChart3 className="w-4 h-4" />
+                        <span>Total Points: {selectedQuiz.totalPoints}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4" />
+                        <span>Total Attempts: {selectedQuiz._count.quizResults}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h4 className="font-semibold">Schedule</h4>
+                    <div className="space-y-1 text-sm">
+                      <div>Created: {new Date(selectedQuiz.createdAt).toLocaleDateString()}</div>
+                      {selectedQuiz.availableFrom && (
+                        <div>Available: {new Date(selectedQuiz.availableFrom).toLocaleDateString()}</div>
+                      )}
+                      {selectedQuiz.availableUntil && (
+                        <div>Until: {new Date(selectedQuiz.availableUntil).toLocaleDateString()}</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2 pt-4">
+                  <Button variant="outline" className="flex-1">
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit Quiz
+                  </Button>
+                  <Button variant="outline" className="flex-1">
+                    <Eye className="w-4 h-4 mr-2" />
+                    Preview
+                  </Button>
+                  <Button className="flex-1">
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    View Results
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
