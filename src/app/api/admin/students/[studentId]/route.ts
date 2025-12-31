@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyToken } from '@/lib/auth/security'
 import { db } from '@/lib/db'
-import { verifyToken, hashPassword } from '@/lib/auth/security'
+import { hashPassword } from '@/lib/auth/security'
+import { notifyAccountLocked } from '@/lib/notifications'
 
 // Helper function to verify admin access
 async function verifyAdminAccess(request: NextRequest) {
@@ -181,6 +183,21 @@ export async function PUT(
         }),
       },
     })
+
+    // Create notification if status changed to LOCKED
+    if (status && status === 'LOCKED' && existingStudent.user.status !== 'LOCKED') {
+      try {
+        await notifyAccountLocked(
+          adminUser.userId,
+          existingStudent.user.fullName || existingStudent.user.username,
+          existingStudent.classIds || 'No class assigned',
+          'Locked by administrator'
+        )
+      } catch (notificationError) {
+        console.error('Failed to create notification:', notificationError)
+        // Don't fail the whole operation if notification fails
+      }
+    }
 
     return NextResponse.json({
       success: true,

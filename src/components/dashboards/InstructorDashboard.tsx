@@ -11,6 +11,8 @@ import QuizManager from '@/components/quiz/QuizManager'
 import InstructorStudentsView from '@/components/instructor/InstructorStudentsView'
 import InstructorQuizzesView from '@/components/instructor/InstructorQuizzesView'
 import InstructorQuizResultsView from '@/components/instructor/InstructorQuizResultsView'
+import NotificationDropdown from '@/components/ui/NotificationDropdown'
+import InstructorSettings from '@/components/instructor/InstructorSettings'
 import {
   LayoutDashboard,
   BookOpen,
@@ -21,6 +23,7 @@ import {
   Bell,
   BarChart3,
   Clock,
+  Settings,
 } from 'lucide-react'
 
 interface Quiz {
@@ -63,6 +66,7 @@ export default function InstructorDashboard() {
   const [showQuizzesView, setShowQuizzesView] = useState(false)
   const [showQuizResultsView, setShowQuizResultsView] = useState(false)
   const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const handleViewStudents = (cls: Class) => {
     setSelectedClass(cls)
@@ -208,16 +212,14 @@ export default function InstructorDashboard() {
             </div>
 
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">
-                  3
-                </span>
+              <NotificationDropdown />
+              <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)}>
+                <Settings className="w-5 h-5" />
               </Button>
               <Avatar>
                 <AvatarImage src={user?.avatar} />
-                <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                  {user?.fullName?.split(' ').map(n => n[0]).join('') || user?.username.slice(0, 2)}
+                <AvatarFallback className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300">
+                  {user?.fullName?.split(' ').map(n => n[0]).join('') || user?.username?.substring(0, 2).toUpperCase() || 'IN'}
                 </AvatarFallback>
               </Avatar>
               <Button variant="ghost" size="icon" onClick={handleLogout}>
@@ -536,6 +538,9 @@ export default function InstructorDashboard() {
           </p>
         </div>
       </footer>
+
+      {/* Instructor Settings Modal */}
+      <InstructorSettings open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   )
 }

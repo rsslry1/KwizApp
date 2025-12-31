@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { 
   UserCog, 
   Plus, 
@@ -61,14 +62,24 @@ interface Class {
 }
 
 export default function InstructorManager() {
-  const { token } = useAuthStore()
+  const { user, token } = useAuthStore()
   const [instructors, setInstructors] = useState<Instructor[]>([])
-  const [classes, setClasses] = useState<Class[]>([])
   const [loading, setLoading] = useState(true)
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [editingInstructor, setEditingInstructor] = useState<Instructor | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [editingInstructor, setEditingInstructor] = useState<Instructor | null>(null)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [classes, setClasses] = useState<Class[]>([])
+
+  // Helper function to get avatar URL
+  const getAvatarUrl = (avatar: string | null | undefined) => {
+    if (!avatar) return ''
+    if (avatar.startsWith('http')) return avatar
+    // If it's a relative path, make it absolute
+    return `${window.location.origin}${avatar}`
+  }
   const [classFilter, setClassFilter] = useState('')
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 0 })
   const [formData, setFormData] = useState({
@@ -452,15 +463,23 @@ export default function InstructorManager() {
             <Card key={instructor.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg mb-1">{instructor.user.fullName || instructor.user.username}</CardTitle>
-                    <CardDescription>@{instructor.user.username}</CardDescription>
-                    {instructor.user.email && (
-                      <CardDescription className="flex items-center gap-1 mt-1">
-                        <Mail className="w-3 h-3" />
-                        {instructor.user.email}
-                      </CardDescription>
-                    )}
+                  <div className="flex items-center gap-3 flex-1">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={getAvatarUrl(instructor.user.avatar)} />
+                      <AvatarFallback className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300">
+                        {instructor.user.fullName?.split(' ').map(n => n[0]).join('') || instructor.user.username?.substring(0, 2).toUpperCase() || 'IN'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <CardTitle className="text-lg mb-1">{instructor.user.fullName || instructor.user.username}</CardTitle>
+                      <CardDescription>@{instructor.user.username}</CardDescription>
+                      {instructor.user.email && (
+                        <CardDescription className="flex items-center gap-1 mt-1">
+                          <Mail className="w-3 h-3" />
+                          {instructor.user.email}
+                        </CardDescription>
+                      )}
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Button variant="ghost" size="icon" onClick={() => openEditDialog(instructor)}>

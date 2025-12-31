@@ -9,6 +9,8 @@ import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import QuizTaking from '@/components/quiz/QuizTaking'
 import QuizResults from '@/components/quiz/QuizResults'
+import NotificationDropdown from '@/components/ui/NotificationDropdown'
+import StudentSettings from '@/components/student/StudentSettings'
 import {
   LayoutDashboard,
   BookOpen,
@@ -21,9 +23,12 @@ import {
   Search,
   Filter,
   Loader2,
+  Settings,
+  Users,
+  X,
 } from 'lucide-react'
 
-type View = 'dashboard' | 'quiz' | 'results' | 'list'
+type View = 'dashboard' | 'quiz' | 'results' | 'list' | 'instructors'
 
 export interface Quiz {
   id: string
@@ -43,7 +48,11 @@ export default function StudentDashboard() {
   const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null)
   const [loading, setLoading] = useState(true)
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
+  const [showInstructors, setShowInstructors] = useState(false)
+  const [instructors, setInstructors] = useState<any[]>([])
+  const [instructorsLoading, setInstructorsLoading] = useState(false)
   const [quizStartTime, setQuizStartTime] = useState<string | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   useEffect(() => {
     if (token) {
@@ -144,8 +153,31 @@ export default function StudentDashboard() {
     alert('Leaderboard feature coming soon!')
   }
 
+  const handleViewInstructors = async () => {
+    setShowInstructors(true)
+    setInstructorsLoading(true)
+    try {
+      const response = await fetch('/api/student/instructors', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setInstructors(data.instructors || [])
+      } else {
+        console.error('Failed to fetch instructors')
+      }
+    } catch (error) {
+      console.error('Error fetching instructors:', error)
+    } finally {
+      setInstructorsLoading(false)
+    }
+  }
+
   const handleSettings = () => {
-    alert('Settings feature coming soon!')
+    setSettingsOpen(true)
   }
 
   // Show Quiz Taking View
@@ -225,25 +257,14 @@ export default function StudentDashboard() {
             </div>
 
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">
-                  2
-                </span>
+              <NotificationDropdown />
+              <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)}>
+                <Settings className="w-5 h-5" />
               </Button>
               <Avatar>
-                <AvatarImage 
-                  src={getAvatarUrl(user?.avatar)} 
-                  alt={`${user?.fullName || user?.username}'s avatar`}
-                  onError={(e) => {
-                    console.log('Avatar failed to load:', user?.avatar, 'Full URL:', getAvatarUrl(user?.avatar))
-                  }}
-                  onLoad={() => {
-                    console.log('Avatar loaded successfully:', getAvatarUrl(user?.avatar))
-                  }}
-                />
+                <AvatarImage src={getAvatarUrl(user?.avatar)} />
                 <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                  {user?.fullName?.split(' ').map(n => n[0]).join('') || user?.username.slice(0, 2)}
+                  {user?.fullName?.split(' ').map(n => n[0]).join('') || user?.username?.substring(0, 2).toUpperCase() || 'ST'}
                 </AvatarFallback>
               </Avatar>
               <Button variant="ghost" size="icon" onClick={handleLogout}>
@@ -513,8 +534,12 @@ export default function StudentDashboard() {
                     <Trophy className="w-4 h-4 mr-2" />
                     View Leaderboard
                   </Button>
+                  <Button variant="outline" className="w-full justify-start" onClick={handleViewInstructors}>
+                    <Users className="w-4 h-4 mr-2" />
+                    View Instructors
+                  </Button>
                   <Button variant="outline" className="w-full justify-start" onClick={handleSettings}>
-                    <Bell className="w-4 h-4 mr-2" />
+                    <Settings className="w-4 h-4 mr-2" />
                     Settings
                   </Button>
                 </CardContent>
@@ -524,14 +549,84 @@ export default function StudentDashboard() {
         )}
       </main>
 
+      {/* Instructors View */}
+      {showInstructors && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Instructors</h2>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setShowInstructors(false)}
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+            <div className="p-6">
+              {instructorsLoading ? (
+                <div className="text-center text-slate-600 dark:text-slate-300 mb-4">
+                  <Users className="w-12 h-12 mx-auto text-slate-400" />
+                  <p className="mt-2">Loading instructors...</p>
+                </div>
+              ) : instructors.length === 0 ? (
+                <div className="text-center text-slate-600 dark:text-slate-300 mb-4">
+                  <Users className="w-12 h-12 mx-auto text-slate-400" />
+                  <p className="mt-2">No instructors assigned to your classes</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {instructors.map((instructor) => (
+                    <div key={instructor.id} className="flex items-center gap-4 p-4 border rounded-lg">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={getAvatarUrl(instructor.user.avatar)} />
+                        <AvatarFallback className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300">
+                          {instructor.user.fullName?.split(' ').map(n => n[0]).join('') || instructor.user.username?.substring(0, 2).toUpperCase() || 'IN'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-slate-900 dark:text-white">
+                          {instructor.user.fullName || instructor.user.username}
+                        </h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          @{instructor.user.username}
+                        </p>
+                        {instructor.user.email && (
+                          <p className="text-sm text-slate-500 dark:text-slate-500">
+                            {instructor.user.email}
+                          </p>
+                        )}
+                        {instructor.classes.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {instructor.classes.map((cls: any) => (
+                              <Badge key={cls.id} variant="outline" className="text-xs">
+                                {cls.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
       <footer className="border-t mt-12 bg-white dark:bg-slate-900 py-6">
         <div className="container mx-auto px-4">
           <p className="text-center text-sm text-slate-600 dark:text-slate-400">
+            2025 QAMS - Quiz & Activity Management System
             © 2025 QAMS - Quiz & Activity Management System
           </p>
         </div>
       </footer>
+
+      {/* Student Settings Modal */}
+      <StudentSettings open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   )
 }

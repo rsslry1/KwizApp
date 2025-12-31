@@ -13,6 +13,8 @@ import InstructorManager from '@/components/admin/InstructorManager'
 import AdminQuizManager from '@/components/admin/AdminQuizManager'
 import BulkStudentGenerator from '@/components/admin/BulkStudentGenerator'
 import BulkInstructorGenerator from '@/components/admin/BulkInstructorGenerator'
+import AdminSettings from '@/components/admin/AdminSettings'
+import NotificationDropdown from '@/components/ui/NotificationDropdown'
 import {
   LayoutDashboard,
   Users,
@@ -56,6 +58,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
   const [classFilter, setClassFilter] = useState<string>('')
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const handleNavigateToStudents = (classId: string) => {
     setClassFilter(classId)
@@ -193,11 +196,9 @@ export default function AdminDashboard() {
             </div>
 
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">
-                  5
-                </span>
+              <NotificationDropdown />
+              <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)}>
+                <Settings className="w-5 h-5" />
               </Button>
               <Avatar>
                 <AvatarImage src={user?.avatar} />
@@ -226,14 +227,14 @@ export default function AdminDashboard() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => setSettingsOpen(true)}>
               <Settings className="w-4 h-4 mr-2" />
               System Settings
             </Button>
-            <Button className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
+            {/* <Button className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
               <Plus className="w-4 h-4 mr-2" />
               Quick Actions
-            </Button>
+            </Button> */}
           </div>
         </div>
 
@@ -356,7 +357,7 @@ export default function AdminDashboard() {
                       <Shield className="w-4 h-4 mr-2" />
                       View Audit Logs
                     </Button>
-                    <Button variant="outline" className="w-full justify-start">
+                    <Button variant="outline" className="w-full justify-start" onClick={() => setSettingsOpen(true)}>
                       <Settings className="w-4 h-4 mr-2" />
                       System Settings
                     </Button>
@@ -418,6 +419,9 @@ export default function AdminDashboard() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Admin Settings Modal */}
+      <AdminSettings open={settingsOpen} onOpenChange={setSettingsOpen} />
 
       {/* Footer */}
       <footer className="border-t mt-12 bg-white dark:bg-slate-900 py-6">

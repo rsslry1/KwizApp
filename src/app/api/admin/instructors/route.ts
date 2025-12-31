@@ -72,6 +72,7 @@ export async function GET(request: NextRequest) {
               createdAt: true,
               lastLoginAt: true,
               isFirstLogin: true,
+              avatar: true,
             }
           }
         },

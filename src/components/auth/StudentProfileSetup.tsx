@@ -8,34 +8,36 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { User, Lock, AlertCircle, CheckCircle2, LogOut, Camera, X } from 'lucide-react'
+import { User, Lock, AlertCircle, CheckCircle2, LogOut, Camera, X, Eye, EyeOff } from 'lucide-react'
 
 export default function StudentProfileSetup() {
-  const { user, updateUser, logout } = useAuthStore()
+  const { user, token, updateUser, logout } = useAuthStore()
   const [fullName, setFullName] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [email, setEmail] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState('')
   const [avatar, setAvatar] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [showAvatarModal, setShowAvatarModal] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const validatePassword = (password: string): boolean => {
-    const hasMinLength = password.length >= 12
-    const hasUpperCase = /[A-Z]/.test(password)
-    const hasLowerCase = /[a-z]/.test(password)
-    const hasNumber = /[0-9]/.test(password)
-    const hasSymbol = /[!@#$%^&*(),.?":{}|<>]/.test(password)
-    return hasMinLength && hasUpperCase && hasLowerCase && hasNumber && hasSymbol
+    // Simple validation: at least 8 characters
+    return password.length >= 8
   }
 
   const validateFullName = (name: string): boolean => {
-    const nameRegex = /^[A-Za-z]+ [A-Za-z]+$/
-    return nameRegex.test(name.trim())
+    // Accept names with 2 or more parts (first, middle, last names)
+    const trimmedName = name.trim()
+    // Should have at least 2 parts separated by spaces, and only contain letters and spaces
+    const nameRegex = /^[A-Za-z]+(?: [A-Za-z]+)+$/
+    return nameRegex.test(trimmedName) && trimmedName.length >= 3
   }
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,14 +114,14 @@ export default function StudentProfileSetup() {
     if (!fullName.trim()) {
       newErrors.fullName = 'Full name is required'
     } else if (!validateFullName(fullName)) {
-      newErrors.fullName = 'Please enter your name as "First Last" (e.g., John Doe)'
+      newErrors.fullName = 'Please enter your full name (first, middle, and last name)'
     }
 
     // Validate password
     if (!newPassword) {
       newErrors.newPassword = 'Password is required'
     } else if (!validatePassword(newPassword)) {
-      newErrors.newPassword = 'Password must be at least 12 characters with uppercase, lowercase, number, and symbol'
+      newErrors.newPassword = 'Password must be at least 8 characters long'
     }
 
     // Validate confirm password
@@ -133,23 +135,49 @@ export default function StudentProfileSetup() {
       return
     }
 
-    // Upload avatar if selected
-    if (avatar) {
-      await uploadAvatar()
+    try {
+      // Upload avatar if selected
+      if (avatar) {
+        await uploadAvatar()
+      }
+
+      // Call API to complete profile
+      const response = await fetch('/api/student/complete-profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          fullName: fullName.trim(),
+          newPassword,
+          email: email || undefined,
+          phoneNumber: phoneNumber || undefined
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to complete profile')
+      }
+
+      // Update user state with response data
+      updateUser({
+        fullName: data.user.fullName,
+        isFirstLogin: data.user.isFirstLogin,
+        email: data.user.email,
+      })
+
+      setSuccess(true)
+    } catch (error) {
+      console.error('Profile completion error:', error)
+      setErrors({ 
+        submit: error instanceof Error ? error.message : 'Failed to complete profile' 
+      })
+    } finally {
+      setIsSubmitting(false)
     }
-
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    // Update user state
-    updateUser({
-      fullName: fullName.trim(),
-      isFirstLogin: false,
-      email: email || undefined,
-    })
-
-    setSuccess(true)
-    setIsSubmitting(false)
   }
 
   const handleLogout = () => {
@@ -274,7 +302,7 @@ export default function StudentProfileSetup() {
                 <Input
                   id="fullName"
                   type="text"
-                  placeholder="John Doe"
+                  placeholder="Juan Miguel Santos"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className={errors.fullName ? 'border-red-500' : ''}
@@ -283,7 +311,7 @@ export default function StudentProfileSetup() {
                   <p className="text-sm text-red-600 dark:text-red-400">{errors.fullName}</p>
                 )}
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Format: First Last (e.g., John Doe). This cannot be changed later.
+                  Format: First Middle Last (e.g., Juan Miguel Santos). This cannot be changed later.
                 </p>
               </div>
 
@@ -293,22 +321,32 @@ export default function StudentProfileSetup() {
                   <Lock className="w-4 h-4" />
                   New Password <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  id="newPassword"
-                  type="password"
-                  placeholder="Enter your new password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className={errors.newPassword ? 'border-red-500' : ''}
-                />
+                <div className="relative">
+                  <Input
+                    id="newPassword"
+                    type={showNewPassword ? 'text' : 'password'}
+                    placeholder="Enter your new password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className={errors.newPassword ? 'border-red-500' : ''}
+                    disabled={isSubmitting}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 py-2"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    disabled={isSubmitting}
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </Button>
+                </div>
                 {errors.newPassword && (
                   <p className="text-sm text-red-600 dark:text-red-400">{errors.newPassword}</p>
                 )}
                 <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
-                  <li>• At least 12 characters long</li>
-                  <li>• Contains uppercase and lowercase letters</li>
-                  <li>• Contains at least one number</li>
-                  <li>• Contains at least one special character (!@#$%^&*)</li>
+                  <li>• At least 8 characters long</li>
                 </ul>
               </div>
 
@@ -318,14 +356,27 @@ export default function StudentProfileSetup() {
                   <Lock className="w-4 h-4" />
                   Confirm Password <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="Confirm your new password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={errors.confirmPassword ? 'border-red-500' : ''}
-                />
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    placeholder="Confirm your new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className={errors.confirmPassword ? 'border-red-500' : ''}
+                    disabled={isSubmitting}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 py-2"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    disabled={isSubmitting}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </Button>
+                </div>
                 {errors.confirmPassword && (
                   <p className="text-sm text-red-600 dark:text-red-400">{errors.confirmPassword}</p>
                 )}
@@ -355,6 +406,16 @@ export default function StudentProfileSetup() {
                   Your username has been changed to your full name. You will use your full name and new password for all future logins.
                 </AlertDescription>
               </Alert>
+
+              {/* Submit Error Alert */}
+              {errors.submit && (
+                <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/50">
+                  <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                  <AlertDescription className="text-red-700 dark:text-red-300">
+                    {errors.submit}
+                  </AlertDescription>
+                </Alert>
+              )}
 
               {/* Action Buttons */}
               <div className="flex gap-3">

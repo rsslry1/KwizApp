@@ -82,3 +82,66 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+// PUT instructor profile
+export async function PUT(request: NextRequest) {
+  try {
+    const instructorUser = await verifyInstructorAccess(request)
+    if (!instructorUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const { fullName, username, email, phoneNumber } = await request.json()
+
+    if (!username || !fullName) {
+      return NextResponse.json({ error: 'Username and full name are required' }, { status: 400 })
+    }
+
+    // Check username uniqueness if changed
+    if (username !== instructorUser.user?.username) {
+      const existingUser = await db.user.findUnique({
+        where: { username },
+      })
+
+      if (existingUser) {
+        return NextResponse.json({ error: 'Username already exists' }, { status: 400 })
+      }
+    }
+
+    // Update user profile
+    const updateData: any = {
+      username: username.trim(),
+      email: email || undefined,
+      phoneNumber: phoneNumber || undefined,
+      fullName: fullName.trim(), // Instructors can change full name
+    }
+
+    const updatedUser = await db.user.update({
+      where: { id: instructorUser.userId },
+      data: updateData,
+      select: {
+        id: true,
+        username: true,
+        fullName: true,
+        email: true,
+        role: true,
+        avatar: true,
+        isFirstLogin: true
+      }
+    })
+
+    return NextResponse.json({
+      message: 'Profile updated successfully',
+      user: updatedUser
+    })
+  } catch (error) {
+    console.error('Update instructor profile error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
