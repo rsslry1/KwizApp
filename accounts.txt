@@ -1,6 +1,12 @@
 admin  
 admin123
 
+test
+test
+
+teststudent
+12345678
+
 ### Installation
 
 1. Clone the repository
@@ -28,3 +34,9 @@ admin123
 6. Start the development server:
    ```bash
    bun run dev
+
+tunnel using cloudflare
+
+1. install : winget install Cloudflare.cloudflared
+2. check in cmd : where cloudflared
+3. run : C:\Program Files (x86)\cloudflared\cloudflared.exe" tunnel --url http://localhost:3000
