@@ -2,7 +2,7 @@
 
 A modern, secure, web-based Quiz and Activity Management System designed for educational institutions.
 
-## 🎯 Features
+##  Features
 
 ### Core Functionality
 - **Role-Based Access Control**: Three distinct user roles (Admin, Instructor, Student) with appropriate permissions
@@ -33,7 +33,7 @@ A modern, secure, web-based Quiz and Activity Management System designed for edu
 - System configuration
 - Audit logs
 
-## 🚀 Technology Stack
+##  Technology Stack
 
 - **Frontend**: Next.js 15 with App Router, React 19, TypeScript 5
 - **Styling**: Tailwind CSS 4 with shadcn/ui components
@@ -43,7 +43,7 @@ A modern, secure, web-based Quiz and Activity Management System designed for edu
 - **UI Components**: shadcn/ui (Radix UI primitives)
 - **Icons**: Lucide React
 
-## 📦 Installation
+##  Installation
 
 1. Clone the repository:
 ```bash
@@ -80,7 +80,7 @@ bun run dev
 
 7. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-## 🔑 Default Credentials
+##  Default Credentials
 
 ### Admin
 - Username: `admin`
@@ -94,7 +94,7 @@ bun run dev
 - Username: `Student001` through `Student005`
 - Password: `DefaultPass@2025` (first login - must change on setup)
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 my-project/
@@ -122,7 +122,7 @@ my-project/
 └── seed.ts                   # Database seeding script
 ```
 
-## 🔒 Security Features
+##  Security Features
 
 ### Authentication & Authorization
 - **JWT-based Authentication**: Secure token generation and verification
@@ -138,7 +138,7 @@ my-project/
 - **Password History**: Prevents reuse of last 5 passwords
 - **Secure Defaults**: Strong default passwords for new accounts
 
-## 🎨 UI/UX Features
+## UI/UX Features
 
 ### Design
 - Modern, clean interface with shadcn/ui components
@@ -180,7 +180,7 @@ my-project/
 - `POST /api/student/quizzes/:id/submit` - Submit quiz
 - `GET /api/student/results` - Get quiz results
 
-## 📊 Database Schema
+##  Database Schema
 
 ### Core Models
 - **User**: Base user model with authentication data
@@ -234,7 +234,7 @@ my-project/
 - Track personal progress
 - Manage profile settings
 
-## 🔐 Security Best Practices
+## Security Best Practices
 
 1. **Never commit sensitive data**: Keep `.env` file secure
 2. **Change default passwords**: Update all default credentials in production
@@ -245,7 +245,7 @@ my-project/
 7. **Rate limiting**: Implement rate limiting on public endpoints
 8. **Input validation**: Always validate and sanitize user input
 
-## 🎯 Future Enhancements
+## Future Enhancements
 
 - WebSocket support for real-time updates
 - Email notifications for deadlines and alerts
@@ -258,11 +258,11 @@ my-project/
 - Video proctoring
 - Multiple language support
 
-## 📄 License
+## License
 
 This project is proprietary software. All rights reserved.
 
-## 🤝 Support
+## Support
 
 For support and questions, please contact the development team.
 
